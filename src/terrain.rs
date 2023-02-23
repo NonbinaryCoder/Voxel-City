@@ -1,6 +1,9 @@
 use std::fmt::{Debug, Display};
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    utils::{HashMap, HashSet},
+};
 
 use self::{
     chunk::{Chunk, ChunkPos, Cleanup, LocalPos, TileSlot, CHUNK_WIDTH},
@@ -9,6 +12,7 @@ use self::{
 
 mod chunk;
 mod inspect;
+mod mesh;
 mod tile;
 
 pub struct TerrainPlugin;
@@ -16,6 +20,7 @@ pub struct TerrainPlugin;
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(inspect::InspectPlugin)
+            .add_plugin(mesh::MeshPlugin)
             .init_resource::<Terrain>();
     }
 }
@@ -23,6 +28,7 @@ impl Plugin for TerrainPlugin {
 #[derive(Debug, Default, Resource)]
 pub struct Terrain {
     chunks: HashMap<ChunkPos, Chunk>,
+    changed: HashSet<ChunkPos>,
 }
 
 impl Terrain {
@@ -52,10 +58,44 @@ impl Terrain {
         }
     }
 
-    pub fn cleanup(&mut self, pos: GlobalPos, cleanup: Cleanup) {
+    fn cleanup(&mut self, pos: GlobalPos, cleanup: Cleanup) {
+        self.mark_changed(pos);
         match cleanup {
             Cleanup::None => {}
             Cleanup::RemoveChunk => drop(self.chunks.remove(&pos.chunk)),
+        }
+    }
+
+    fn mark_changed(&mut self, pos: GlobalPos) {
+        self.changed.insert(pos.chunk);
+
+        fn insert_1(s: &mut Terrain, p: GlobalPos, a: ChunkPos) {
+            s.changed.insert(p.chunk - a);
+        }
+        fn insert_2(s: &mut Terrain, p: GlobalPos, a: ChunkPos, b: ChunkPos) {
+            s.changed.insert(p.chunk - a);
+            s.changed.insert(p.chunk - b);
+            s.changed.insert(p.chunk - a - b);
+        }
+        fn insert_3(s: &mut Terrain, p: GlobalPos, a: ChunkPos, b: ChunkPos, c: ChunkPos) {
+            s.changed.insert(p.chunk - a);
+            s.changed.insert(p.chunk - b);
+            s.changed.insert(p.chunk - c);
+            s.changed.insert(p.chunk - a - b);
+            s.changed.insert(p.chunk - a - c);
+            s.changed.insert(p.chunk - b - c);
+            s.changed.insert(p.chunk - a - b - c);
+        }
+
+        match pos.local.xyz().map(|v| v == 0) {
+            [false, false, false] => {}
+            [true, false, false] => insert_1(self, pos, ChunkPos::X),
+            [false, true, false] => insert_1(self, pos, ChunkPos::Y),
+            [false, false, true] => insert_1(self, pos, ChunkPos::Z),
+            [true, true, false] => insert_2(self, pos, ChunkPos::X, ChunkPos::Y),
+            [true, false, true] => insert_2(self, pos, ChunkPos::X, ChunkPos::Z),
+            [false, true, true] => insert_2(self, pos, ChunkPos::Y, ChunkPos::Z),
+            [true, true, true] => insert_3(self, pos, ChunkPos::X, ChunkPos::Y, ChunkPos::Z),
         }
     }
 }

@@ -3369,6 +3369,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "bitflags",
  "derive_more",
  "proptest",
 ]

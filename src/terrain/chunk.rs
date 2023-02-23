@@ -84,7 +84,10 @@ impl Cleanup {
 pub struct LocalPos(u16);
 
 impl LocalPos {
-    /// Constructs a new chunk pos
+    /// Iterator over all positions in self where x, y, and z are all less than 15
+    pub const INNER_POSITIONS: Inner = Inner(u16::MAX);
+
+    /// Constructs a new local pos
     ///
     /// # Panics
     ///
@@ -94,13 +97,19 @@ impl LocalPos {
             .then(|| Self::new_unchecked([x, y, z]))
     }
 
-    /// Constructs a new chunk pos.  Incorrect usage of this function does not
+    /// Constructs a new local pos.  Incorrect usage of this function does not
     /// (currently) result in Undefined Behavior, but other code relies on proper
     /// layout of `LocalPos` and is likely to panic
     pub fn new_unchecked([x, y, z]: [u8; 3]) -> Self {
         let (x, y, z) = (x as u16, y as u16, z as u16);
         let (x, y, z) = (x << 8, y << 4, z);
         Self(x | y | z)
+    }
+
+    /// Tries to construct self from bit representation
+    /// Layout (bits): 0000xxxxyyyyzzzz
+    pub fn try_from_bits(bits: u16) -> Option<Self> {
+        (bits & !0x0fff == 0).then_some(Self(bits))
     }
 
     /// Bit representation of self
@@ -124,6 +133,25 @@ impl LocalPos {
     pub fn xyz(self) -> [u8; 3] {
         [self.x(), self.y(), self.z()]
     }
+
+    pub fn to_vec3(self) -> Vec3 {
+        Vec3::new(self.x() as f32, self.y() as f32, self.z() as f32)
+    }
+
+    pub fn inc_x(self) -> Self {
+        assert!(self.x() < 15);
+        Self(self.0 + 0x0100)
+    }
+
+    pub fn inc_y(self) -> Self {
+        assert!(self.y() < 15);
+        Self(self.0 + 0x0010)
+    }
+
+    pub fn inc_z(self) -> Self {
+        assert!(self.z() < 15);
+        Self(self.0 + 0x0001)
+    }
 }
 
 impl Debug for LocalPos {
@@ -135,6 +163,26 @@ impl Debug for LocalPos {
 impl Display for LocalPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{:2}, {:2}, {:2}]", self.x(), self.y(), self.z())
+    }
+}
+
+#[derive(Debug)]
+pub struct Inner(u16);
+
+impl Iterator for Inner {
+    type Item = LocalPos;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0 = self.0.wrapping_add(1);
+        let mut skip_edge = |edge, add| {
+            if self.0 & edge == edge {
+                self.0 += add;
+            }
+        };
+        skip_edge(0x00f, 0x001);
+        skip_edge(0x0f0, 0x010);
+        skip_edge(0xf00, 0x100);
+        LocalPos::try_from_bits(self.0)
     }
 }
 
@@ -195,5 +243,19 @@ mod tests {
         fn local_pos_xyz(xyz in [..CHUNK_WIDTH; 3]) {
             assert_eq!(xyz, LocalPos::new(xyz).unwrap().xyz());
         }
+    }
+
+    #[test]
+    fn inner_pos_is_inner() {
+        for inner_pos in LocalPos::INNER_POSITIONS {
+            assert!(inner_pos.x() < 16);
+            assert!(inner_pos.y() < 16);
+            assert!(inner_pos.z() < 16);
+        }
+    }
+
+    #[test]
+    fn inner_pos_correct_count() {
+        assert_eq!(LocalPos::INNER_POSITIONS.count(), 15_usize.pow(3))
     }
 }
