@@ -68,9 +68,12 @@ fn generate_meshes_system(
             let (entity, mesh_handle) = &terrain.mesh_ids.entry(chunk_pos).or_insert_with(|| {
                 init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
             });
-            let mut mesh = MeshBuilder::edit(meshes.get_mut(mesh_handle).unwrap());
-            add_inner_tiles(chunk, &mut mesh);
-            commands.entity(*entity).insert(mesh.aabb());
+            let mesh = &mut meshes.get_mut(mesh_handle).unwrap();
+            let mut mesh_builder = MeshBuilder::edit(mesh);
+            add_inner_tiles(chunk, &mut mesh_builder);
+            commands
+                .entity(*entity)
+                .insert(mesh.compute_aabb().unwrap());
         } else if let Some((entity, _)) = terrain.mesh_ids.remove(&chunk_pos) {
             commands.entity(entity).despawn();
         }

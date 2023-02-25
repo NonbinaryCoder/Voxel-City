@@ -63,19 +63,19 @@ fn inspect_mesh_system(
                         if ui.button("Cube Outline").clicked() {
                             terrain.clear();
                             let size = *cube_size as i32 - 4;
-                            for x in -4..size {
+                            for x in -4..=size {
                                 terrain.set(GlobalPos::from_xyz_i32([x, -4, -4]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([x, -4, size]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([x, size, -4]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([x, size, size]), Tile::Brick);
                             }
-                            for y in -3..(size - 1) {
+                            for y in -4..=size {
                                 terrain.set(GlobalPos::from_xyz_i32([-4, y, -4]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([-4, y, size]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([size, y, -4]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([size, y, size]), Tile::Brick);
                             }
-                            for z in -3..(size - 1) {
+                            for z in -4..=size {
                                 terrain.set(GlobalPos::from_xyz_i32([-4, -4, z]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([-4, size, z]), Tile::Brick);
                                 terrain.set(GlobalPos::from_xyz_i32([size, -4, z]), Tile::Brick);
