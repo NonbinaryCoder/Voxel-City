@@ -7,5 +7,5 @@ struct VertexOutput {
 
 @fragment
 fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
-    return fract(input.world_position);
+    return fract(input.world_position + 0.5);
 }

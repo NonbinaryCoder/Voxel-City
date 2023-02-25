@@ -90,16 +90,20 @@ impl MeshObject for Face {
     type Pos = SubtileFace;
 
     fn add_to_mesh(self, mesh: &mut MeshBuilder, subtile: Subtile, pos: Self::Pos) {
-        let Directions { out, north, east } = pos.directions(subtile);
-        let side = |a, b| out * 0.5 + a * 0.5 + b * 0.5;
+        let Directions {
+            normal,
+            tangent,
+            bitangent,
+        } = pos.directions(subtile);
+        let side = |a, b| a * 0.5 + b * 0.5;
         mesh.add_quad(
             [
-                side(north, east),
-                side(-north, east),
-                side(-north, -east),
-                side(north, -east),
+                side(tangent, bitangent),
+                side(Vec3::ZERO, bitangent),
+                side(Vec3::ZERO, Vec3::ZERO),
+                side(tangent, Vec3::ZERO),
             ],
-            out,
+            normal,
             Vec2::splat(0.5),
         );
     }
@@ -142,43 +146,61 @@ impl SubtileFace {
         }
     }
 
-    pub const fn directions(self, subtile: Subtile) -> Directions {
-        const fn axis(do_neg: bool, pos: Vec3, neg: Vec3) -> Vec3 {
-            if do_neg {
-                pos
-            } else {
-                neg
-            }
+    pub fn directions(self, subtile: Subtile) -> Directions {
+        macro_rules! dir {
+            ($normal:ident, $tangent:ident, $bitangent:ident) => {
+                Directions {
+                    normal: Vec3::$normal,
+                    tangent: Vec3::$tangent,
+                    bitangent: Vec3::$bitangent,
+                }
+            };
         }
-
-        let x = axis(subtile.contains(Subtile::X), Vec3::X, Vec3::NEG_X);
-        let y = axis(subtile.contains(Subtile::Y), Vec3::Y, Vec3::NEG_Y);
-        let z = axis(subtile.contains(Subtile::Z), Vec3::Z, Vec3::NEG_Z);
-
+        // The compiler should figure out this prevents the `unreachable!()` calls
+        // from being reached
+        assert!(subtile.bits() <= 0b111);
         match self {
-            SubtileFace::X => Directions {
-                out: x,
-                north: y,
-                east: z,
+            SubtileFace::X => match subtile.bits() {
+                0b000 => dir!(X, NEG_Y, NEG_Z),
+                0b001 => dir!(X, Z, NEG_Y),
+                0b010 => dir!(X, NEG_Z, Y),
+                0b011 => dir!(X, Y, Z),
+                0b100 => dir!(NEG_X, NEG_Z, NEG_Y),
+                0b101 => dir!(NEG_X, NEG_Y, Z),
+                0b110 => dir!(NEG_X, Y, NEG_Z),
+                0b111 => dir!(NEG_X, Z, Y),
+                _ => unreachable!(),
             },
-            SubtileFace::Y => Directions {
-                out: y,
-                north: x,
-                east: z,
+            SubtileFace::Y => match subtile.bits() {
+                0b000 => dir!(Y, NEG_Z, NEG_X),
+                0b001 => dir!(Y, NEG_X, Z),
+                0b010 => dir!(NEG_Y, NEG_X, NEG_Z),
+                0b011 => dir!(NEG_Y, Z, NEG_X),
+                0b100 => dir!(Y, X, NEG_Z),
+                0b101 => dir!(Y, Z, X),
+                0b110 => dir!(NEG_Y, NEG_Z, X),
+                0b111 => dir!(NEG_Y, X, Z),
+                _ => unreachable!(),
             },
-            SubtileFace::Z => Directions {
-                out: z,
-                north: y,
-                east: x,
+            SubtileFace::Z => match subtile.bits() {
+                0b000 => dir!(Z, NEG_X, NEG_Y),
+                0b001 => dir!(NEG_Z, NEG_Y, NEG_X),
+                0b010 => dir!(Z, Y, NEG_X),
+                0b011 => dir!(NEG_Z, NEG_X, Y),
+                0b100 => dir!(Z, NEG_Y, X),
+                0b101 => dir!(NEG_Z, X, NEG_Y),
+                0b110 => dir!(Z, X, Y),
+                0b111 => dir!(NEG_Z, Y, X),
+                _ => dir!(ZERO, ZERO, ZERO),
             },
         }
     }
 }
 
 pub struct Directions {
-    out: Vec3,
-    north: Vec3,
-    east: Vec3,
+    normal: Vec3,
+    tangent: Vec3,
+    bitangent: Vec3,
 }
 
 bitflags! {

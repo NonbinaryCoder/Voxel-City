@@ -16,13 +16,15 @@ use super::{
     Terrain,
 };
 
+mod inspect;
 pub mod mesh_builder;
 
 pub struct MeshPlugin;
 
 impl Plugin for MeshPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_material_system)
+        app.add_plugin(inspect::InspectPlugin)
+            .add_startup_system(init_material_system)
             .add_plugin(MaterialPlugin::<OpaqueTerrainMaterial>::default())
             .add_system(generate_meshes_system);
     }
@@ -161,21 +163,6 @@ impl Subtile {
         }
 
         Iter(u8::MAX)
-    }
-
-    /// Distance from corner to center of this tile
-    pub const fn direction(self) -> Vec3 {
-        match self.bits {
-            0b000 => Vec3::new(-1.0, -1.0, -1.0),
-            0b001 => Vec3::new(-1.0, -1.0, 1.0),
-            0b010 => Vec3::new(-1.0, 1.0, -1.0),
-            0b011 => Vec3::new(-1.0, 1.0, 1.0),
-            0b100 => Vec3::new(1.0, -1.0, -1.0),
-            0b101 => Vec3::new(1.0, -1.0, 1.0),
-            0b110 => Vec3::new(1.0, 1.0, -1.0),
-            0b111 => Vec3::new(1.0, 1.0, 1.0),
-            _ => unreachable!(),
-        }
     }
 
     pub fn tile_at_face(self, face: SubtileFace) -> Self {
