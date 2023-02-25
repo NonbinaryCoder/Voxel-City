@@ -138,7 +138,8 @@ impl GlobalPos {
         }
     }
 
-    pub fn from_xyz_i32(xyz: IVec3) -> GlobalPos {
+    pub fn from_xyz_i32(xyz: impl Into<IVec3>) -> GlobalPos {
+        let xyz = xyz.into();
         Self {
             chunk: xyz
                 .to_array()
@@ -177,7 +178,7 @@ mod tests {
 
     prop_compose! {
         fn arb_global_pos()(xyz: [i32; 3]) -> GlobalPos {
-            GlobalPos::from_xyz_i32(xyz.into())
+            GlobalPos::from_xyz_i32(xyz)
         }
     }
 
@@ -218,7 +219,7 @@ mod tests {
         ) {
             let poses = poses
                 .into_iter()
-                .map(|xyz| GlobalPos::from_xyz_i32(xyz.into()))
+                .map(GlobalPos::from_xyz_i32)
                 .collect::<Vec<_>>();
             let mut terrain = Terrain::default();
 
@@ -235,7 +236,7 @@ mod tests {
 
         #[test]
         fn global_pos_xyz(xyz: [i32; 3]) {
-            let global_pos = GlobalPos::from_xyz_i32(xyz.into());
+            let global_pos = GlobalPos::from_xyz_i32(xyz);
             assert_eq!(xyz.map(|v| v as i64), global_pos.xyz())
         }
     }
