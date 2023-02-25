@@ -29,6 +29,7 @@ impl Plugin for TerrainPlugin {
 pub struct Terrain {
     chunks: HashMap<ChunkPos, Chunk>,
     changed: HashSet<ChunkPos>,
+    mesh_ids: HashMap<ChunkPos, (Entity, Handle<Mesh>)>,
 }
 
 impl Terrain {
@@ -97,6 +98,12 @@ impl Terrain {
             [false, true, true] => insert_2(self, pos, ChunkPos::Y, ChunkPos::Z),
             [true, true, true] => insert_3(self, pos, ChunkPos::X, ChunkPos::Y, ChunkPos::Z),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.chunks.clear();
+        self.changed.clear();
+        self.changed.extend(self.mesh_ids.keys());
     }
 }
 

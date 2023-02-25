@@ -3,8 +3,10 @@ use std::ops::{Index, IndexMut};
 use bevy::{
     prelude::*,
     reflect::TypeUuid,
-    render::render_resource::{AsBindGroup, PrimitiveTopology},
-    utils::HashMap,
+    render::{
+        primitives::Aabb,
+        render_resource::{AsBindGroup, PrimitiveTopology},
+    },
 };
 use bitflags::bitflags;
 
@@ -57,22 +59,19 @@ struct TerrainMaterialHandles {
 fn generate_meshes_system(
     mut commands: Commands,
     mut terrain: ResMut<Terrain>,
-    mut mesh_ids: Local<HashMap<ChunkPos, (Entity, Handle<Mesh>)>>,
     mut meshes: ResMut<Assets<Mesh>>,
     materials: Res<TerrainMaterialHandles>,
 ) {
     let terrain = &mut *terrain;
     for chunk_pos in terrain.changed.drain() {
         if let Some(chunk) = terrain.chunks.get(&chunk_pos) {
-            let mesh_handle = &mesh_ids
-                .entry(chunk_pos)
-                .or_insert_with(|| {
-                    init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
-                })
-                .1;
+            let (entity, mesh_handle) = &terrain.mesh_ids.entry(chunk_pos).or_insert_with(|| {
+                init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
+            });
             let mut mesh = MeshBuilder::edit(meshes.get_mut(mesh_handle).unwrap());
             add_inner_tiles(chunk, &mut mesh);
-        } else if let Some((entity, _)) = mesh_ids.remove(&chunk_pos) {
+            commands.entity(*entity).insert(mesh.aabb());
+        } else if let Some((entity, _)) = terrain.mesh_ids.remove(&chunk_pos) {
             commands.entity(entity).despawn();
         }
     }
@@ -107,12 +106,15 @@ fn init_chunk_mesh(
     let mesh = meshes.add(mesh);
 
     let entity = commands
-        .spawn(MaterialMeshBundle {
-            mesh: mesh.clone(),
-            material: materials.opaque.clone(),
-            transform: Transform::from_translation(pos.as_vec3() * CHUNK_WIDTH as f32),
-            ..default()
-        })
+        .spawn((
+            MaterialMeshBundle {
+                mesh: mesh.clone(),
+                material: materials.opaque.clone(),
+                transform: Transform::from_translation(pos.as_vec3() * CHUNK_WIDTH as f32),
+                ..default()
+            },
+            Aabb::default(),
+        ))
         .id();
     (entity, mesh)
 }
