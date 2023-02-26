@@ -84,9 +84,6 @@ impl Cleanup {
 pub struct LocalPos(u16);
 
 impl LocalPos {
-    /// Iterator over all positions in self where x, y, and z are all less than 15
-    pub const INNER_POSITIONS: Inner = Inner(u16::MAX);
-
     /// Constructs a new local pos
     ///
     /// # Panics
@@ -152,6 +149,30 @@ impl LocalPos {
         assert!(self.z() < 15);
         Self(self.0 + 0x0001)
     }
+
+    pub const fn inner_positions() -> impl Iterator<Item = LocalPos> {
+        #[derive(Debug)]
+        pub struct Iter(u16);
+
+        impl Iterator for Iter {
+            type Item = LocalPos;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                self.0 = self.0.wrapping_add(1);
+                let mut skip_edge = |edge, add| {
+                    if self.0 & edge == edge {
+                        self.0 += add;
+                    }
+                };
+                skip_edge(0x00f, 0x001);
+                skip_edge(0x0f0, 0x010);
+                skip_edge(0xf00, 0x100);
+                LocalPos::try_from_bits(self.0)
+            }
+        }
+
+        Iter(u16::MAX)
+    }
 }
 
 impl Debug for LocalPos {
@@ -163,26 +184,6 @@ impl Debug for LocalPos {
 impl Display for LocalPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{:2}, {:2}, {:2}]", self.x(), self.y(), self.z())
-    }
-}
-
-#[derive(Debug)]
-pub struct Inner(u16);
-
-impl Iterator for Inner {
-    type Item = LocalPos;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0 = self.0.wrapping_add(1);
-        let mut skip_edge = |edge, add| {
-            if self.0 & edge == edge {
-                self.0 += add;
-            }
-        };
-        skip_edge(0x00f, 0x001);
-        skip_edge(0x0f0, 0x010);
-        skip_edge(0xf00, 0x100);
-        LocalPos::try_from_bits(self.0)
     }
 }
 
@@ -247,7 +248,7 @@ mod tests {
 
     #[test]
     fn inner_pos_is_inner() {
-        for inner_pos in LocalPos::INNER_POSITIONS {
+        for inner_pos in LocalPos::inner_positions() {
             assert!(inner_pos.x() < 16);
             assert!(inner_pos.y() < 16);
             assert!(inner_pos.z() < 16);
@@ -256,6 +257,6 @@ mod tests {
 
     #[test]
     fn inner_pos_correct_count() {
-        assert_eq!(LocalPos::INNER_POSITIONS.count(), 15_usize.pow(3))
+        assert_eq!(LocalPos::inner_positions().count(), 15_usize.pow(3))
     }
 }
