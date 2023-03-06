@@ -147,6 +147,25 @@ fn generate_meshes_system(
                 (tiles, pos)
             });
 
+            generate_corner_mesh(
+                CornerTiles([
+                    chunk[LocalPos::try_from_bits(0xfff).unwrap()],
+                    z_face_chunk[LocalPos::try_from_bits(0xff0).unwrap()],
+                    y_face_chunk[LocalPos::try_from_bits(0xf0f).unwrap()],
+                    yz_edge_chunk[LocalPos::try_from_bits(0xf00).unwrap()],
+                    x_face_chunk[LocalPos::try_from_bits(0x0ff).unwrap()],
+                    xz_edge_chunk[LocalPos::try_from_bits(0x0f0).unwrap()],
+                    xy_edge_chunk[LocalPos::try_from_bits(0x00f).unwrap()],
+                    terrain
+                        .chunks
+                        .get(&(chunk_pos + ChunkPos::ONE))
+                        .map(|c| c[LocalPos::ZERO])
+                        .unwrap_or(None),
+                ]),
+                LocalPos::try_from_bits(0xfff).unwrap(),
+                &mut mesh_builder,
+            );
+
             commands
                 .entity(*entity)
                 .insert(mesh.compute_aabb().unwrap_or(Default::default()));
@@ -254,6 +273,25 @@ fn generate_meshes_system(
                         (tiles, pos)
                     });
                 }
+
+                generate_corner_mesh(
+                    CornerTiles([
+                        None,
+                        z_face_chunk[LocalPos::try_from_bits(0xff0).unwrap()],
+                        y_face_chunk[LocalPos::try_from_bits(0xf0f).unwrap()],
+                        yz_edge_chunk[LocalPos::try_from_bits(0xf00).unwrap()],
+                        x_face_chunk[LocalPos::try_from_bits(0x0ff).unwrap()],
+                        xz_edge_chunk[LocalPos::try_from_bits(0x0f0).unwrap()],
+                        xy_edge_chunk[LocalPos::try_from_bits(0x00f).unwrap()],
+                        terrain
+                            .chunks
+                            .get(&(chunk_pos + ChunkPos::ONE))
+                            .map(|c| c[LocalPos::ZERO])
+                            .unwrap_or(None),
+                    ]),
+                    LocalPos::try_from_bits(0xfff).unwrap(),
+                    &mut mesh_builder,
+                );
 
                 commands
                     .entity(*entity)

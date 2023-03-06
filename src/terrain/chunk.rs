@@ -84,6 +84,8 @@ impl Cleanup {
 pub struct LocalPos(u16);
 
 impl LocalPos {
+    pub const ZERO: Self = Self(0);
+
     /// Bitmask that preserves x position of self
     pub const X_MASK: Self = Self(0xf00);
     /// Bitmask that preserves y position of self
