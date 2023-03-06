@@ -1,11 +1,7 @@
 use std::iter;
 
-use bevy::{
-    prelude::*,
-    render::{mesh::VertexAttributeValues, primitives::Aabb},
-};
+use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use bitflags::bitflags;
-use itertools::{Itertools, MinMaxResult};
 
 use super::Subtile;
 
@@ -80,14 +76,6 @@ impl<'a> MeshBuilder<'a> {
     fn add_quad(&mut self, position: [Vec3; 4], normal: Vec3, uv: Vec2) {
         self.add_tri([position[0], position[1], position[3]], normal, uv);
         self.add_tri([position[2], position[3], position[1]], normal, uv);
-    }
-
-    pub fn aabb(&self) -> Aabb {
-        match self.position.iter().minmax() {
-            MinMaxResult::NoElements => Aabb::default(),
-            MinMaxResult::OneElement(_) => unreachable!(),
-            MinMaxResult::MinMax(min, max) => Aabb::from_min_max((*min).into(), (*max).into()),
-        }
     }
 }
 

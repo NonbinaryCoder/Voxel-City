@@ -69,67 +69,198 @@ fn generate_meshes_system(
             let (entity, mesh_handle) = &terrain.mesh_ids.entry(chunk_pos).or_insert_with(|| {
                 init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
             });
-            let mesh = &mut meshes.get_mut(mesh_handle).unwrap();
+            let mesh = meshes.get_mut(mesh_handle).unwrap();
             let mut mesh_builder = MeshBuilder::edit(mesh);
+
             add_inner_tiles(chunk, &mut mesh_builder);
-            add_x_face_tiles(
-                chunk,
-                terrain
+
+            let x_face_chunk = terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::X))
+                .unwrap_or(&empty_chunk);
+            add_x_face_tiles(chunk, x_face_chunk, &mut mesh_builder);
+            let y_face_chunk = terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::Y))
+                .unwrap_or(&empty_chunk);
+            add_y_face_tiles(chunk, y_face_chunk, &mut mesh_builder);
+            let z_face_chunk = terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::Z))
+                .unwrap_or(&empty_chunk);
+            add_z_face_tiles(chunk, z_face_chunk, &mut mesh_builder);
+
+            let xy_edge_chunk = &terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::X + ChunkPos::Y))
+                .unwrap_or(&empty_chunk);
+            add_edge_tiles(&mut mesh_builder, |z| {
+                let pos = LocalPos::new([15, 15, z]).unwrap();
+                let tiles = CornerTiles([
+                    chunk[pos],
+                    chunk[pos.inc_z()],
+                    y_face_chunk[pos & LocalPos::XZ_MASK],
+                    y_face_chunk[pos.inc_z() & LocalPos::XZ_MASK],
+                    x_face_chunk[pos & LocalPos::YZ_MASK],
+                    x_face_chunk[pos.inc_z() & LocalPos::YZ_MASK],
+                    xy_edge_chunk[pos & LocalPos::Z_MASK],
+                    xy_edge_chunk[pos.inc_z() & LocalPos::Z_MASK],
+                ]);
+                (tiles, pos)
+            });
+
+            let xz_edge_chunk = &terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::X + ChunkPos::Z))
+                .unwrap_or(&empty_chunk);
+            add_edge_tiles(&mut mesh_builder, |y| {
+                let pos = LocalPos::new([15, y, 15]).unwrap();
+                let tiles = CornerTiles([
+                    chunk[pos],
+                    z_face_chunk[pos & LocalPos::XY_MASK],
+                    chunk[pos.inc_y()],
+                    z_face_chunk[pos.inc_y() & LocalPos::XY_MASK],
+                    x_face_chunk[pos & LocalPos::YZ_MASK],
+                    xz_edge_chunk[pos & LocalPos::Y_MASK],
+                    x_face_chunk[pos.inc_y() & LocalPos::YZ_MASK],
+                    xz_edge_chunk[pos.inc_y() & LocalPos::Y_MASK],
+                ]);
+                (tiles, pos)
+            });
+
+            let yz_edge_chunk = &terrain
+                .chunks
+                .get(&(chunk_pos + ChunkPos::Y + ChunkPos::Z))
+                .unwrap_or(&empty_chunk);
+            add_edge_tiles(&mut mesh_builder, |x| {
+                let pos = LocalPos::new([x, 15, 15]).unwrap();
+                let tiles = CornerTiles([
+                    chunk[pos],
+                    z_face_chunk[pos & LocalPos::XY_MASK],
+                    y_face_chunk[pos & LocalPos::XZ_MASK],
+                    yz_edge_chunk[pos & LocalPos::X_MASK],
+                    chunk[pos.inc_x()],
+                    z_face_chunk[pos.inc_x() & LocalPos::XY_MASK],
+                    y_face_chunk[pos.inc_x() & LocalPos::XZ_MASK],
+                    yz_edge_chunk[pos.inc_x() & LocalPos::X_MASK],
+                ]);
+                (tiles, pos)
+            });
+
+            commands
+                .entity(*entity)
+                .insert(mesh.compute_aabb().unwrap_or(Default::default()));
+        } else {
+            let set = [
+                [0, 0, 1],
+                [0, 1, 0],
+                [0, 1, 1],
+                [1, 0, 0],
+                [1, 0, 1],
+                [1, 1, 0],
+                [1, 1, 1],
+            ]
+            .map(|pos| terrain.chunks.contains_key(&(chunk_pos + IVec3::from(pos))));
+            #[allow(clippy::eq_op)]
+            if set.into_iter().any(|v| v) {
+                let (entity, mesh_handle) =
+                    &terrain.mesh_ids.entry(chunk_pos).or_insert_with(|| {
+                        init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
+                    });
+                let mesh = &mut meshes.get_mut(mesh_handle).unwrap();
+                let mut mesh_builder = MeshBuilder::edit(mesh);
+
+                let x_face_chunk = terrain
                     .chunks
                     .get(&(chunk_pos + ChunkPos::X))
-                    .unwrap_or(&empty_chunk),
-                &mut mesh_builder,
-            );
-            add_y_face_tiles(
-                chunk,
-                terrain
+                    .unwrap_or(&empty_chunk);
+                if set[0b100 - 1] {
+                    add_x_face_tiles(&empty_chunk, x_face_chunk, &mut mesh_builder);
+                }
+                let y_face_chunk = terrain
                     .chunks
                     .get(&(chunk_pos + ChunkPos::Y))
-                    .unwrap_or(&empty_chunk),
-                &mut mesh_builder,
-            );
-            add_z_face_tiles(
-                chunk,
-                terrain
+                    .unwrap_or(&empty_chunk);
+                if set[0b010 - 1] {
+                    add_y_face_tiles(&empty_chunk, y_face_chunk, &mut mesh_builder);
+                }
+                let z_face_chunk = terrain
                     .chunks
                     .get(&(chunk_pos + ChunkPos::Z))
-                    .unwrap_or(&empty_chunk),
-                &mut mesh_builder,
-            );
-            commands
-                .entity(*entity)
-                .insert(mesh.compute_aabb().unwrap_or(Default::default()));
-        } else if [
-            [0, 0, 1],
-            [0, 1, 0],
-            [0, 1, 1],
-            [1, 0, 0],
-            [1, 0, 1],
-            [1, 1, 0],
-            [1, 1, 1],
-        ]
-        .into_iter()
-        .any(|pos| terrain.chunks.contains_key(&pos.into()))
-        {
-            let (entity, mesh_handle) = &terrain.mesh_ids.entry(chunk_pos).or_insert_with(|| {
-                init_chunk_mesh(&mut commands, &mut meshes, &materials, chunk_pos)
-            });
-            let mesh = &mut meshes.get_mut(mesh_handle).unwrap();
-            let mut mesh_builder = MeshBuilder::edit(mesh);
-            if let Some(next_chunk) = terrain.chunks.get(&(chunk_pos + ChunkPos::X)) {
-                add_x_face_tiles(&empty_chunk, next_chunk, &mut mesh_builder);
+                    .unwrap_or(&empty_chunk);
+                if set[0b001 - 1] {
+                    add_z_face_tiles(&empty_chunk, z_face_chunk, &mut mesh_builder);
+                }
+
+                let xy_edge_chunk = &terrain
+                    .chunks
+                    .get(&(chunk_pos + ChunkPos::X + ChunkPos::Y))
+                    .unwrap_or(&empty_chunk);
+                if set[0b100 - 1] || set[0b010 - 1] || set[0b110 - 1] {
+                    add_edge_tiles(&mut mesh_builder, |z| {
+                        let pos = LocalPos::new([15, 15, z]).unwrap();
+                        let tiles = CornerTiles([
+                            None,
+                            None,
+                            y_face_chunk[pos & LocalPos::XZ_MASK],
+                            y_face_chunk[pos.inc_z() & LocalPos::XZ_MASK],
+                            x_face_chunk[pos & LocalPos::YZ_MASK],
+                            x_face_chunk[pos.inc_z() & LocalPos::YZ_MASK],
+                            xy_edge_chunk[pos & LocalPos::Z_MASK],
+                            xy_edge_chunk[pos.inc_z() & LocalPos::Z_MASK],
+                        ]);
+                        (tiles, pos)
+                    });
+                }
+
+                let xz_edge_chunk = &terrain
+                    .chunks
+                    .get(&(chunk_pos + ChunkPos::X + ChunkPos::Z))
+                    .unwrap_or(&empty_chunk);
+                if set[0b100 - 1] || set[0b001 - 1] || set[0b101 - 1] {
+                    add_edge_tiles(&mut mesh_builder, |y| {
+                        let pos = LocalPos::new([15, y, 15]).unwrap();
+                        let tiles = CornerTiles([
+                            None,
+                            z_face_chunk[pos & LocalPos::XY_MASK],
+                            None,
+                            z_face_chunk[pos.inc_y() & LocalPos::XY_MASK],
+                            x_face_chunk[pos & LocalPos::YZ_MASK],
+                            xz_edge_chunk[pos & LocalPos::Y_MASK],
+                            x_face_chunk[pos.inc_y() & LocalPos::YZ_MASK],
+                            xz_edge_chunk[pos.inc_y() & LocalPos::Y_MASK],
+                        ]);
+                        (tiles, pos)
+                    });
+                }
+
+                let yz_edge_chunk = &terrain
+                    .chunks
+                    .get(&(chunk_pos + ChunkPos::Y + ChunkPos::Z))
+                    .unwrap_or(&empty_chunk);
+                if set[0b010 - 1] || set[0b001 - 1] || set[0b011 - 1] {
+                    add_edge_tiles(&mut mesh_builder, |x| {
+                        let pos = LocalPos::new([x, 15, 15]).unwrap();
+                        let tiles = CornerTiles([
+                            None,
+                            z_face_chunk[pos & LocalPos::XY_MASK],
+                            y_face_chunk[pos & LocalPos::XZ_MASK],
+                            yz_edge_chunk[pos & LocalPos::X_MASK],
+                            None,
+                            z_face_chunk[pos.inc_x() & LocalPos::XY_MASK],
+                            y_face_chunk[pos.inc_x() & LocalPos::XZ_MASK],
+                            yz_edge_chunk[pos.inc_x() & LocalPos::X_MASK],
+                        ]);
+                        (tiles, pos)
+                    });
+                }
+
+                commands
+                    .entity(*entity)
+                    .insert(mesh.compute_aabb().unwrap_or(Default::default()));
+            } else if let Some((entity, _)) = terrain.mesh_ids.remove(&chunk_pos) {
+                commands.entity(entity).despawn();
             }
-            if let Some(next_chunk) = terrain.chunks.get(&(chunk_pos + ChunkPos::Y)) {
-                add_y_face_tiles(&empty_chunk, next_chunk, &mut mesh_builder);
-            }
-            if let Some(next_chunk) = terrain.chunks.get(&(chunk_pos + ChunkPos::Z)) {
-                add_z_face_tiles(&empty_chunk, next_chunk, &mut mesh_builder);
-            }
-            commands
-                .entity(*entity)
-                .insert(mesh.compute_aabb().unwrap_or(Default::default()));
-        } else if let Some((entity, _)) = terrain.mesh_ids.remove(&chunk_pos) {
-            commands.entity(entity).despawn();
         }
     }
 }
@@ -294,6 +425,13 @@ fn add_face_tiles(
     }
 }
 
+fn add_edge_tiles(mesh: &mut MeshBuilder, extract_tiles: impl Fn(u8) -> (CornerTiles, LocalPos)) {
+    for pos in 0..(CHUNK_WIDTH - 1) {
+        let (tiles, pos) = extract_tiles(pos);
+        generate_corner_mesh(tiles, pos, mesh);
+    }
+}
+
 fn init_chunk_mesh(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
@@ -322,8 +460,10 @@ fn init_chunk_mesh(
 
 fn generate_corner_mesh(tiles: CornerTiles, pos: LocalPos, mesh: &mut MeshBuilder) {
     mesh.set_offset(pos.to_vec3());
-    for subtile in Subtile::subtiles() {
-        Tile::generate_mesh(&tiles, subtile, mesh);
+    if tiles != CornerTiles([None; 8]) {
+        for subtile in Subtile::subtiles() {
+            Tile::generate_mesh(&tiles, subtile, mesh);
+        }
     }
 }
 

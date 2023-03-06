@@ -1,6 +1,6 @@
 use std::{
     fmt::{Debug, Display},
-    ops::Index,
+    ops::{BitAnd, Index},
 };
 
 use bevy::prelude::*;
@@ -84,6 +84,19 @@ impl Cleanup {
 pub struct LocalPos(u16);
 
 impl LocalPos {
+    /// Bitmask that preserves x position of self
+    pub const X_MASK: Self = Self(0xf00);
+    /// Bitmask that preserves y position of self
+    pub const Y_MASK: Self = Self(0x0f0);
+    /// Bitmask that preserves z position of self
+    pub const Z_MASK: Self = Self(0x00f);
+    /// Bitmask that preserves x and y position of self
+    pub const XY_MASK: Self = Self(0xff0);
+    /// Bitmask that preserves x and z position of self
+    pub const XZ_MASK: Self = Self(0xf0f);
+    /// Bitmask that preserves y and z position of self
+    pub const YZ_MASK: Self = Self(0x0ff);
+
     /// Constructs a new local pos
     ///
     /// # Panics
@@ -184,6 +197,14 @@ impl Debug for LocalPos {
 impl Display for LocalPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{:2}, {:2}, {:2}]", self.x(), self.y(), self.z())
+    }
+}
+
+impl BitAnd for LocalPos {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
     }
 }
 
