@@ -35,15 +35,23 @@ impl Plugin for MeshPlugin {
 fn init_material_system(
     mut commands: Commands,
     mut materials: ResMut<Assets<OpaqueTerrainMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(TerrainMaterialHandles {
-        opaque: materials.add(OpaqueTerrainMaterial {}),
+        opaque: materials.add(OpaqueTerrainMaterial {
+            // TODO: remove hardcoded palette
+            texture: asset_server.load("palettes/test.png"),
+        }),
     });
 }
 
 #[derive(Debug, AsBindGroup, TypeUuid, Clone)]
 #[uuid = "d8ec3dfe-1da4-418b-93dc-b99a0fe0ee1c"]
-struct OpaqueTerrainMaterial {}
+struct OpaqueTerrainMaterial {
+    #[texture(1)]
+    #[sampler(2)]
+    texture: Handle<Image>,
+}
 
 impl Material for OpaqueTerrainMaterial {
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {

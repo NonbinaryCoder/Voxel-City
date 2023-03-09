@@ -5,10 +5,15 @@ struct VertexOutput {
     @location(2) uv: vec2<f32>,
 }
 
+@group(1) @binding(1)
+var palette: texture_2d<f32>;
+@group(1) @binding(2)
+var palette_sampler: sampler;
+
 let light_direction = vec3<f32>(0.0, 0.917, 0.4);
 
 fn color(uv: vec2<f32>) -> vec4<f32> {
-    return vec4(1.0);
+    return textureSample(palette, palette_sampler, uv);
 }
 
 fn lighting(normal: vec3<f32>) -> f32 {

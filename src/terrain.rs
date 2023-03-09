@@ -187,8 +187,8 @@ mod tests {
         fn add_remove_from_terrain(pos in arb_global_pos()) {
             let mut terrain = Terrain::default();
 
-            terrain.set(pos, Tile::Brick);
-            assert_eq!(terrain.get(pos), Some(Tile::Brick));
+            terrain.set(pos, Tile::BRICK);
+            assert_eq!(terrain.get(pos), Some(Tile::BRICK));
             assert_eq!(terrain.chunks.len(), 1);
 
             terrain.remove(pos);
@@ -203,7 +203,7 @@ mod tests {
             let mut terrain = Terrain::default();
 
             for &pos in &poses {
-                terrain.set(pos, Tile::Brick);
+                terrain.set(pos, Tile::BRICK);
             }
             assert!(!terrain.chunks.is_empty());
 
@@ -224,7 +224,7 @@ mod tests {
             let mut terrain = Terrain::default();
 
             for &pos in &poses {
-                terrain.set(pos, Tile::Brick);
+                terrain.set(pos, Tile::BRICK);
             }
             assert!(!terrain.chunks.is_empty());
 

@@ -51,8 +51,7 @@ impl Terrain {
         move |ui: &mut egui::Ui| {
             ui.vertical_centered_justified(|ui| {
                 let mut slot = self.get(pos);
-                let mut response = ui.selectable_value(&mut slot, None, "Air");
-                response |= ui.selectable_value(&mut slot, Some(Tile::Brick), "Brick");
+                let response = ui.add(Tile::widget_option(&mut slot));
                 if response.changed() {
                     self.set_slot(pos, slot);
                 }

@@ -62,18 +62,18 @@ impl<'a> MeshBuilder<'a> {
         self.offset = offset;
     }
 
-    pub fn add<T: MeshObject>(&mut self, object: T, subtile: Subtile, pos: T::Pos) {
-        object.add_to_mesh(self, subtile, pos);
+    pub fn add<T: MeshObject>(&mut self, object: T, uv: [f32; 2], subtile: Subtile, pos: T::Pos) {
+        object.add_to_mesh(self, uv, subtile, pos);
     }
 
-    fn add_tri(&mut self, position: [Vec3; 3], normal: Vec3, uv: Vec2) {
+    fn add_tri(&mut self, position: [Vec3; 3], normal: Vec3, uv: [f32; 2]) {
         self.position
             .extend(position.into_iter().map(|p| (p + self.offset).to_array()));
         self.normal.extend(iter::repeat(normal.to_array()).take(3));
-        self.uv.extend(iter::repeat(uv.to_array()).take(3));
+        self.uv.extend([uv; 3]);
     }
 
-    fn add_quad(&mut self, position: [Vec3; 4], normal: Vec3, uv: Vec2) {
+    fn add_quad(&mut self, position: [Vec3; 4], normal: Vec3, uv: [f32; 2]) {
         self.add_tri([position[0], position[1], position[3]], normal, uv);
         self.add_tri([position[2], position[3], position[1]], normal, uv);
     }
@@ -89,7 +89,7 @@ pub enum Face {
 impl MeshObject for Face {
     type Pos = SubtileFace;
 
-    fn add_to_mesh(self, mesh: &mut MeshBuilder, subtile: Subtile, pos: Self::Pos) {
+    fn add_to_mesh(self, mesh: &mut MeshBuilder, uv: [f32; 2], subtile: Subtile, pos: Self::Pos) {
         let Directions {
             normal,
             tangent,
@@ -104,7 +104,7 @@ impl MeshObject for Face {
                 side(tangent, Vec3::ZERO),
             ],
             normal,
-            Vec2::splat(0.5),
+            uv,
         );
     }
 }
@@ -241,7 +241,7 @@ pub enum Edge {
 pub trait MeshObject {
     type Pos;
 
-    fn add_to_mesh(self, mesh: &mut MeshBuilder, subtile: Subtile, pos: Self::Pos);
+    fn add_to_mesh(self, mesh: &mut MeshBuilder, uv: [f32; 2], subtile: Subtile, pos: Self::Pos);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

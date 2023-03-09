@@ -4,7 +4,10 @@ use bevy::{
 };
 use bevy_egui::{egui, EguiContext};
 
-use crate::terrain::{tile::Tile, GlobalPos, Terrain};
+use crate::terrain::{
+    tile::{color::IndexedColor, Tile},
+    GlobalPos, Terrain,
+};
 
 pub struct InspectPlugin;
 
@@ -20,6 +23,7 @@ fn inspect_mesh_system(
     mut wireframe_config: ResMut<WireframeConfig>,
     mut terrain: ResMut<Terrain>,
     mut cube_size: Local<isize>,
+    mut tile_type: Local<Tile>,
 ) {
     egui::Window::new("Mesh Inspector")
         .open(&mut true)
@@ -29,6 +33,10 @@ fn inspect_mesh_system(
             ui.vertical_centered_justified(|ui| {
                 ui.heading("Terrain");
 
+                ui.add(Tile::widget(&mut tile_type));
+
+                ui.add_space(4.0);
+
                 if ui.button("Clear").clicked() {
                     terrain.clear();
                 };
@@ -36,7 +44,7 @@ fn inspect_mesh_system(
                 if ui.button("Tower").clicked() {
                     terrain.clear();
                     for y in -24..=24 {
-                        terrain.set(GlobalPos::from_xyz_i32(IVec3::new(1, y, 1)), Tile::Brick);
+                        terrain.set(GlobalPos::from_xyz_i32(IVec3::new(1, y, 1)), *tile_type);
                     }
                 }
 
@@ -48,8 +56,7 @@ fn inspect_mesh_system(
                             for x in -4..(*cube_size as i32 - 4) {
                                 for y in -4..(*cube_size as i32 - 4) {
                                     for z in -4..(*cube_size as i32 - 4) {
-                                        terrain
-                                            .set(GlobalPos::from_xyz_i32([x, y, z]), Tile::Brick);
+                                        terrain.set(GlobalPos::from_xyz_i32([x, y, z]), *tile_type);
                                     }
                                 }
                             }
@@ -64,22 +71,22 @@ fn inspect_mesh_system(
                             terrain.clear();
                             let size = *cube_size as i32 - 4;
                             for x in -4..=size {
-                                terrain.set(GlobalPos::from_xyz_i32([x, -4, -4]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([x, -4, size]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([x, size, -4]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([x, size, size]), Tile::Brick);
+                                terrain.set(GlobalPos::from_xyz_i32([x, -4, -4]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([x, -4, size]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([x, size, -4]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([x, size, size]), *tile_type);
                             }
                             for y in -4..=size {
-                                terrain.set(GlobalPos::from_xyz_i32([-4, y, -4]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([-4, y, size]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([size, y, -4]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([size, y, size]), Tile::Brick);
+                                terrain.set(GlobalPos::from_xyz_i32([-4, y, -4]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([-4, y, size]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([size, y, -4]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([size, y, size]), *tile_type);
                             }
                             for z in -4..=size {
-                                terrain.set(GlobalPos::from_xyz_i32([-4, -4, z]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([-4, size, z]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([size, -4, z]), Tile::Brick);
-                                terrain.set(GlobalPos::from_xyz_i32([size, size, z]), Tile::Brick);
+                                terrain.set(GlobalPos::from_xyz_i32([-4, -4, z]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([-4, size, z]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([size, -4, z]), *tile_type);
+                                terrain.set(GlobalPos::from_xyz_i32([size, size, z]), *tile_type);
                             }
                         }
                     });
@@ -91,7 +98,7 @@ fn inspect_mesh_system(
                         while bits != 0 {
                             let x = bits.trailing_zeros();
                             bits ^= 1 << x;
-                            terrain.set(GlobalPos::from_xyz_i32([x as i32, y, z]), Tile::Brick);
+                            terrain.set(GlobalPos::from_xyz_i32([x as i32, y, z]), *tile_type);
                         }
                     };
                     draw_line(0b10001000000000000, 0, 6);
@@ -108,6 +115,16 @@ fn inspect_mesh_system(
                     draw_line(0b10001000000000000, 1, 2);
                     draw_line(0b10001000000000000, 1, 1);
                     draw_line(0b10001000000000000, 1, 0);
+                }
+
+                ui.add_space(4.0);
+
+                if ui.button("Colors").clicked() {
+                    terrain.clear();
+                    for color in (0..).map_while(IndexedColor::from_index) {
+                        let [x, y] = color.uv().map(|v| (v * 8.0 - 0.5) as i32);
+                        terrain.set(GlobalPos::from_xyz_i32([x, 0, y]), Tile::Brick { color })
+                    }
                 }
             });
 

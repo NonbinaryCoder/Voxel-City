@@ -229,7 +229,7 @@ mod tests {
         fn add_remove_from_chunk(pos in arb_local_pos()) {
             let mut chunk = Chunk::default();
 
-            let cleanup = chunk.set(pos, Tile::Brick);
+            let cleanup = chunk.set(pos, Tile::BRICK);
             assert_eq!(cleanup, Cleanup::None);
 
             let cleanup = chunk.remove(pos);
@@ -241,7 +241,7 @@ mod tests {
             let mut chunk = Chunk::default();
 
             for &pos in &poses {
-                let cleanup = chunk.set(pos, Tile::Brick);
+                let cleanup = chunk.set(pos, Tile::BRICK);
                 assert_eq!(cleanup, Cleanup::None);
             }
 
